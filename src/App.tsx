@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import DataTable from "react-data-table-component";
 import Papa from "papaparse";
-import Select, { OptionsType } from "react-select";
+import Select from "react-select";
 
 interface DataItem {
   [key: string]: string;
@@ -19,37 +19,40 @@ const App: React.FC = () => {
       complete: (googleData) => {
         setData(googleData.data);
         setFilteredData(googleData.data);
-        const initialFilters: { [key: string]: string[] } = {};
-        for (const key in googleData.data[0]) {
-          const uniqueValues = Array.from(
-            new Set(googleData.data.map((item) => item[key]))
-          );
-          initialFilters[key] = uniqueValues;
-        }
-        setFilters(initialFilters);
+        updateFilters(googleData.data);
       },
     });
   }, []);
 
+  const updateFilters = (dataToUpdate: DataItem[]) => {
+    const newFilters: { [key: string]: string[] } = {};
+    for (const key in dataToUpdate[0]) {
+      const uniqueValues = Array.from(
+        new Set(dataToUpdate.map((item) => item[key]))
+      );
+      newFilters[key] = uniqueValues;
+    }
+    setFilters(newFilters);
+  };
+
   const handleFilterChange = (columnKey: string, selectedValues: string[]) => {
-    setFilters({ ...filters, [columnKey]: selectedValues });
-    let filteredData = data;
+    let newFilteredData = data;
 
     if (selectedValues.length > 0) {
-      filteredData = filteredData.filter((item) =>
+      newFilteredData = newFilteredData.filter((item) =>
         selectedValues.includes(item[columnKey])
       );
     }
 
     for (const key in filters) {
       if (key !== columnKey && filters[key].length > 0) {
-        filteredData = filteredData.filter((item) =>
+        newFilteredData = newFilteredData.filter((item) =>
           filters[key].includes(item[key])
         );
       }
     }
 
-    setFilteredData(filteredData);
+    setFilteredData(newFilteredData);
   };
 
   const filterElements = Object.keys(filters).map((columnKey) => (
@@ -77,7 +80,7 @@ const App: React.FC = () => {
         data={filteredData}
         columns={columns}
         pagination
-        paginationPerPage={100}
+        paginationPerPage={20}
         paginationRowsPerPageOptions={[20, 50, 100]}
         paginationComponentOptions={{
           noRowsPerPage: true,
@@ -100,12 +103,15 @@ const CustomFilter: React.FC<CustomFilterProps> = ({
 }) => {
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
 
-  const handleSelectChange = (
-    selectedOptions: OptionsType<{ label: string; value: string }>
-  ) => {
-    const selected = selectedOptions.map((option) => option.value);
-    setSelectedValues(selected);
-    onChange(columnKey, selected);
+  const handleCheckboxChange = (value: string) => {
+    let newSelectedValues;
+    if (selectedValues.includes(value)) {
+      newSelectedValues = selectedValues.filter((v) => v !== value);
+    } else {
+      newSelectedValues = [...selectedValues, value];
+    }
+    setSelectedValues(newSelectedValues);
+    onChange(columnKey, newSelectedValues); // Trigger the filter change immediately
   };
 
   const options = values.map((value) => ({
@@ -118,33 +124,29 @@ const CustomFilter: React.FC<CustomFilterProps> = ({
       <label>{columnKey} Filter:</label>
       <Select
         isMulti
+        isSearchable={true}
+        closeMenuOnSelect={false}
         value={selectedValues.map((value) => ({
           label: value,
           value: value,
         }))}
         options={options}
-        onChange={handleSelectChange}
-        closeMenuOnSelect={false}
-        components={{ DropdownIndicator: null }}
-        styles={{
-          option: (provided, state) => ({
-            ...provided,
-            backgroundColor: state.isSelected ? "#007bff" : "white",
-            color: state.isSelected ? "white" : "black",
-          }),
-          multiValue: (provided) => ({
-            ...provided,
-            backgroundColor: "#007bff",
-            color: "white",
-          }),
-          multiValueRemove: (provided) => ({
-            ...provided,
-            color: "white",
-            ":hover": {
-              backgroundColor: "red",
-              color: "white",
-            },
-          }),
+        onChange={(selectedOptions) => {
+          const selected = selectedOptions.map((option) => option.value);
+          setSelectedValues(selected);
+          onChange(columnKey, selected);
+        }}
+        components={{
+          Option: ({ children, ...props }) => (
+            <div>
+              <input
+                type="checkbox"
+                checked={selectedValues.includes(props.value)}
+                onChange={() => handleCheckboxChange(props.value)}
+              />
+              <label>{children}</label>
+            </div>
+          ),
         }}
       />
     </div>
