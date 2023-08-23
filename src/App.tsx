@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import DataTable from "react-data-table-component";
 import Papa from "papaparse";
-import Select from "react-select";
+import Select, { OptionsType } from "react-select";
 
 interface DataItem {
   [key: string]: string;
@@ -19,7 +19,6 @@ const App: React.FC = () => {
       complete: (googleData) => {
         setData(googleData.data);
         setFilteredData(googleData.data);
-        // Initialize filters with all unique values for each column
         const initialFilters: { [key: string]: string[] } = {};
         for (const key in googleData.data[0]) {
           const uniqueValues = Array.from(
@@ -33,20 +32,15 @@ const App: React.FC = () => {
   }, []);
 
   const handleFilterChange = (columnKey: string, selectedValues: string[]) => {
-    // Update filters with selected values for the column
     setFilters({ ...filters, [columnKey]: selectedValues });
-
-    // Filter data based on selected values from all filters
     let filteredData = data;
 
-    // Filter data for the selected column
     if (selectedValues.length > 0) {
       filteredData = filteredData.filter((item) =>
         selectedValues.includes(item[columnKey])
       );
     }
 
-    // Apply filters for other columns
     for (const key in filters) {
       if (key !== columnKey && filters[key].length > 0) {
         filteredData = filteredData.filter((item) =>
@@ -106,8 +100,10 @@ const CustomFilter: React.FC<CustomFilterProps> = ({
 }) => {
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
 
-  const handleSelectChange = (selectedOptions: any) => {
-    const selected = selectedOptions.map((option: any) => option.value);
+  const handleSelectChange = (
+    selectedOptions: OptionsType<{ label: string; value: string }>
+  ) => {
+    const selected = selectedOptions.map((option) => option.value);
     setSelectedValues(selected);
     onChange(columnKey, selected);
   };
@@ -128,6 +124,28 @@ const CustomFilter: React.FC<CustomFilterProps> = ({
         }))}
         options={options}
         onChange={handleSelectChange}
+        closeMenuOnSelect={false}
+        components={{ DropdownIndicator: null }}
+        styles={{
+          option: (provided, state) => ({
+            ...provided,
+            backgroundColor: state.isSelected ? "#007bff" : "white",
+            color: state.isSelected ? "white" : "black",
+          }),
+          multiValue: (provided) => ({
+            ...provided,
+            backgroundColor: "#007bff",
+            color: "white",
+          }),
+          multiValueRemove: (provided) => ({
+            ...provided,
+            color: "white",
+            ":hover": {
+              backgroundColor: "red",
+              color: "white",
+            },
+          }),
+        }}
       />
     </div>
   );
