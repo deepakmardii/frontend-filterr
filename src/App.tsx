@@ -1,7 +1,8 @@
+// App.tsx
 import React, { useState, useEffect } from "react";
-import DataTable from "react-data-table-component";
+import DataTable, { TableColumn } from "react-data-table-component";
 import Papa from "papaparse";
-import Select from "react-select";
+import CustomFilter from "./CustomFilter";
 
 interface DataItem {
   [key: string]: string;
@@ -16,10 +17,10 @@ const App: React.FC = () => {
     Papa.parse<DataItem>("/data.csv", {
       download: true,
       header: true,
-      complete: (googleData) => {
-        setData(googleData.data);
-        setFilteredData(googleData.data);
-        updateFilters(googleData.data);
+      complete: (result) => {
+        setData(result.data);
+        setFilteredData(result.data);
+        updateFilters(result.data);
       },
     });
   }, []);
@@ -36,21 +37,25 @@ const App: React.FC = () => {
   };
 
   const handleFilterChange = (columnKey: string, selectedValues: string[]) => {
-    let newFilteredData = data;
+    const filterFunctions: ((item: DataItem) => boolean)[] = [];
 
     if (selectedValues.length > 0) {
-      newFilteredData = newFilteredData.filter((item) =>
+      filterFunctions.push((item: DataItem) =>
         selectedValues.includes(item[columnKey])
       );
     }
 
     for (const key in filters) {
       if (key !== columnKey && filters[key].length > 0) {
-        newFilteredData = newFilteredData.filter((item) =>
+        filterFunctions.push((item: DataItem) =>
           filters[key].includes(item[key])
         );
       }
     }
+
+    const newFilteredData = data.filter((item) =>
+      filterFunctions.every((func) => func(item))
+    );
 
     setFilteredData(newFilteredData);
   };
@@ -64,10 +69,10 @@ const App: React.FC = () => {
     />
   ));
 
-  const columns = data[0]
+  const columns: TableColumn<DataItem>[] = data[0]
     ? Object.keys(data[0]).map((key) => ({
         name: key,
-        selector: key,
+        selector: (row) => row[key],
         sortable: true,
       }))
     : [];
@@ -87,69 +92,6 @@ const App: React.FC = () => {
         }}
       />
     </>
-  );
-};
-
-interface CustomFilterProps {
-  columnKey: string;
-  values: string[];
-  onChange: (columnKey: string, selectedValues: string[]) => void;
-}
-
-const CustomFilter: React.FC<CustomFilterProps> = ({
-  columnKey,
-  values,
-  onChange,
-}) => {
-  const [selectedValues, setSelectedValues] = useState<string[]>([]);
-
-  const handleCheckboxChange = (value: string) => {
-    let newSelectedValues;
-    if (selectedValues.includes(value)) {
-      newSelectedValues = selectedValues.filter((v) => v !== value);
-    } else {
-      newSelectedValues = [...selectedValues, value];
-    }
-    setSelectedValues(newSelectedValues);
-    onChange(columnKey, newSelectedValues); // Trigger the filter change immediately
-  };
-
-  const options = values.map((value) => ({
-    label: value,
-    value: value,
-  }));
-
-  return (
-    <div className="filter">
-      <label>{columnKey} Filter:</label>
-      <Select
-        isMulti
-        isSearchable={true}
-        closeMenuOnSelect={false}
-        value={selectedValues.map((value) => ({
-          label: value,
-          value: value,
-        }))}
-        options={options}
-        onChange={(selectedOptions) => {
-          const selected = selectedOptions.map((option) => option.value);
-          setSelectedValues(selected);
-          onChange(columnKey, selected);
-        }}
-        components={{
-          Option: ({ children, ...props }) => (
-            <div>
-              <input
-                type="checkbox"
-                checked={selectedValues.includes(props.value)}
-                onChange={() => handleCheckboxChange(props.value)}
-              />
-              <label>{children}</label>
-            </div>
-          ),
-        }}
-      />
-    </div>
   );
 };
 
