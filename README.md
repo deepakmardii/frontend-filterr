@@ -1,3 +1,5 @@
+![Screenshot](https://github.com/deepakmardii/frontend-filterr/assets/67671892/a21394b2-0580-4be9-a60e-549ba1241186)
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
